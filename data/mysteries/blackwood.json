@@ -1,0 +1,57 @@
+{
+  "title": "The Blackwood Manor Murder",
+  "introduction": "It is a stormy evening at Blackwood Manor. The guests have gathered in the great hall when a terrible cry echoes through the corridors. Moments later, a body is found in the library. Tension fills the air as the residents and staff look uneasily at one another. Among them are Lady Blackwood, the stern matriarch of the house; Mr. Graves, the ever-watchful butler; Clara the nervous maid; and Colonel Hawthorne, a gruff family friend. All seem to know something—but not everyone is willing to tell the whole truth. It is up to you, detective, to uncover the secrets of Blackwood Manor and solve the murder before the night is through.",
+  "killer": "Lady Blackwood",
+  "weapon": "Candlestick",
+  "location": "Library",
+  "characters": [
+    {
+      "name": "Lady Blackwood",
+      "personality": "Aristocratic, haughty, guarded",
+      "knowledge": ["Was in the library", "Knows about the candlestick"],
+      "reliable": false
+    },
+    {
+      "name": "Mr. Graves the Butler",
+      "personality": "Polite, evasive",
+      "knowledge": ["Saw someone sneaking around"],
+      "reliable": true
+    },
+    {
+      "name": "Clara the Maid",
+      "personality": "Nervous, gossipy",
+      "knowledge": ["Heard noises in the library"],
+      "reliable": true
+    },
+    {
+      "name": "Colonel Hawthorne",
+      "personality": "Gruff, direct",
+      "knowledge": ["Thinks Lady Blackwood is suspicious"],
+      "reliable": true
+    },
+    {
+      "name": "Dr. Finch",
+      "personality": "Calm, logical",
+      "knowledge": ["Knows cause of death was blunt force"],
+      "reliable": true
+    },
+    {
+      "name": "Emily (the Niece)",
+      "personality": "Sweet, innocent but hiding something",
+      "knowledge": ["Saw the butler near the study"],
+      "reliable": false
+    },
+    {
+      "name": "Mr. Moss the Gardener",
+      "personality": "Simple, honest",
+      "knowledge": ["Was outside during murder"],
+      "reliable": true
+    },
+    {
+      "name": "Reverend Clarke",
+      "personality": "Pious, moralizing",
+      "knowledge": ["Heard a scream"],
+      "reliable": true
+    }
+  ]
+}
