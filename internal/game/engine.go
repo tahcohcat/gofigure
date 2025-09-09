@@ -8,6 +8,7 @@ import (
 	"gofigure/config"
 	"gofigure/internal/logger"
 	"gofigure/internal/ollama"
+	"gofigure/internal/sst"
 	"gofigure/internal/tts"
 	"os"
 	"strings"
@@ -18,11 +19,13 @@ type Engine struct {
 	murder Murder
 
 	tts          tts.Tts
+	sst          sst.Sst
 	ollamaClient *ollama.Client
 	logger       *logger.Log
 	config       *config.Config
 
 	showResponses bool
+	useMicInput   bool
 }
 
 func NewEngine(cfg *config.Config) (*Engine, error) {
@@ -47,12 +50,28 @@ func NewEngine(cfg *config.Config) (*Engine, error) {
 		}
 	}
 
+	// Initialize SST
+	var s sst.Sst
+	s = sst.NewDummySST()
+
+	if cfg.Sst.Enabled && cfg.Sst.Provider == "google" {
+		s, err = sst.NewGoogleSST(ctx, cfg.Sst.LanguageCode, cfg.Sst.SampleRate)
+		if err != nil {
+			logger.New().WithError(err).Error("failed to create Google SST client, using dummy")
+			s = sst.NewDummySST()
+		} else {
+			logger.New().Debug("google sst client created")
+		}
+	}
+
 	return &Engine{
 		tts:           t,
+		sst:           s,
 		ollamaClient:  ollamaClient,
 		logger:        logger.New(),
 		config:        cfg,
 		showResponses: false,
+		useMicInput:   true,
 	}, nil
 }
 
@@ -71,6 +90,11 @@ func (e *Engine) WithMurder(filename string) *Engine {
 	return e
 }
 
+func (e *Engine) WithMicInput(useMic bool) *Engine {
+	e.useMicInput = useMic && e.config.Sst.Enabled
+	return e
+}
+
 func (e *Engine) Start() error {
 	// Check if Ollama model is available
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -82,9 +106,39 @@ func (e *Engine) Start() error {
 	}
 
 	e.logger.Debug("ollama connection verified")
-	e.logger.Info(fmt.Sprintf("🔍 Welcome Detective! You are investigating: %s\n", e.murder.Title))
+
+	welcomeMessage := fmt.Sprintf("🔍 Welcome Detective! You are investigating: %s", e.murder.Title)
+	e.logger.Info(welcomeMessage)
+
+	// Read the introduction aloud if TTS is enabled and narrator TTS model is configured
+	if e.config.Tts.Enabled && len(e.murder.NarratorTTS) > 0 {
+		narratorModel := e.findNarratorTtsModel()
+		if narratorModel != "" {
+			ctx, cancel := context.WithTimeout(context.Background(),
+				time.Duration(e.config.Ollama.Timeout)*time.Second)
+
+			// Speak the welcome message
+			if err := e.tts.Speak(ctx, welcomeMessage, narratorModel); err != nil {
+				e.logger.WithError(err).Error("failed to speak welcome message")
+			}
+
+			// Speak the introduction
+
+			//todo find a way to skip it
+			//if err := e.tts.Speak(ctx, e.murder.Intro, narratorModel); err != nil {
+			//	e.logger.WithError(err).Error("failed to speak introduction")
+			//}
+
+			cancel()
+		}
+	}
+
 	e.logger.Info(e.murder.Intro)
 	e.logger.Info("Type 'help' for available commands.")
+
+	if e.useMicInput {
+		e.logger.Info("🎙️ Microphone input enabled for interviews!")
+	}
 
 	return e.gameLoop()
 }
@@ -146,6 +200,13 @@ func (e *Engine) showHelp() {
 	fmt.Println("  interview <character>          - Interview a character")
 	fmt.Println("  accuse <name> <weapon> <location> - Make your final accusation")
 	fmt.Println("  quit/exit                      - Exit the game")
+
+	if e.useMicInput {
+		fmt.Println("\n🎙️ Microphone Features:")
+		fmt.Println("  During interviews, you can:")
+		fmt.Println("  • Type 'mic' or press ENTER to use voice input (push-to-talk)")
+		fmt.Println("  • Continue typing questions normally")
+	}
 }
 
 func (e *Engine) listCharacters() {
@@ -167,18 +228,42 @@ func (e *Engine) interviewCharacter(charName string, scanner *bufio.Scanner) {
 	fmt.Printf("Personality: %s\n", char.Personality)
 	fmt.Println("Ask them questions (type 'exit' to stop):")
 
+	if e.useMicInput {
+		fmt.Println("💡 Tip: Type 'mic' to use voice input (push-to-talk), or continue typing normally")
+	}
+
 	for {
 		fmt.Print("\nQ: ")
 		if !scanner.Scan() {
 			break
 		}
-		question := strings.TrimSpace(scanner.Text())
-		if question == "exit" {
+		input := strings.TrimSpace(scanner.Text())
+
+		if input == "exit" {
 			fmt.Println("Interview ended.\n")
 			break
 		}
-		if question == "" {
+		if input == "" {
 			continue
+		}
+
+		var question string
+		var err error
+
+		// Check if user wants to use microphone
+		if (input == "mic" || input == "\n") && e.useMicInput {
+			question, err = e.getVoiceInput()
+			if err != nil {
+				fmt.Printf("Voice input failed: %v\n", err)
+				continue
+			}
+			if question == "" {
+				fmt.Println("No speech detected, please try again.")
+				continue
+			}
+			fmt.Printf("You asked: %s\n", question)
+		} else {
+			question = input
 		}
 
 		e.logger.Debug("🤔 Thinking...")
@@ -208,8 +293,58 @@ func (e *Engine) interviewCharacter(charName string, scanner *bufio.Scanner) {
 	}
 }
 
+func (e *Engine) getVoiceInput() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	fmt.Println("🎙️ Press ENTER to start recording...")
+	fmt.Scanln()
+
+	transcriptChan, err := e.sst.StartListening(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to start listening: %w", err)
+	}
+
+	fmt.Println("🔴 Recording... Press ENTER to stop")
+	go func() {
+		fmt.Scanln()
+		e.sst.StopListening()
+	}()
+
+	// For Google SST, we need to manually process the audio chunk
+	if googleSST, ok := e.sst.(*sst.GoogleSST); ok {
+		go func() {
+			time.Sleep(1 * time.Second) // Give some time to collect audio
+			for e.sst.IsListening() {
+				googleSST.ProcessAudioChunk(ctx)
+				time.Sleep(100 * time.Millisecond)
+			}
+		}()
+	}
+
+	// Wait for transcript or timeout
+	select {
+	case transcript := <-transcriptChan:
+		e.sst.StopListening()
+		return strings.TrimSpace(transcript), nil
+	case <-ctx.Done():
+		e.sst.StopListening()
+		return "", fmt.Errorf("voice input timed out")
+	}
+}
+
 func (e *Engine) findTtsModel(character *Character) string {
 	for _, ttsOption := range character.TTS {
+		if ttsOption.Engine == e.tts.Name() {
+			return ttsOption.Model
+		}
+	}
+
+	return ""
+}
+
+func (e *Engine) findNarratorTtsModel() string {
+	for _, ttsOption := range e.murder.NarratorTTS {
 		if ttsOption.Engine == e.tts.Name() {
 			return ttsOption.Model
 		}

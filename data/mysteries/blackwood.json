@@ -1,6 +1,12 @@
 {
   "title": "The Blackwood Manor Murder",
   "introduction": "It is a stormy evening at Blackwood Manor. The guests have gathered for Lady Blackwood's birthday celebration when a terrible cry echoes through the corridors at 9:47 PM. Moments later, Lord Blackwood's body is discovered in the library by the butler, Mr. Graves. The victim appears to have been struck by a heavy object. With the phone lines down due to the storm and the nearest constable miles away, it falls to you, detective, to question the household and uncover the truth before the killer strikes again.",
+  "narrator_tts": [
+    {
+      "engine": "google",
+      "model": "en-GB-Chirp3-HD-Charon"
+    }
+  ],
   "victim": "Lord Blackwood",
   "killer": "Lady Blackwood",
   "weapon": "Candlestick",

@@ -1,0 +1,14 @@
+ollama:
+  host: "http://localhost:11434"
+  model: "llama3.2"
+  timeout: 50
+
+tts:
+  enabled: true    # Enable to hear character voices and narrator
+  type: "google"
+
+sst:
+  enabled: true
+  provider: "google"
+  language_code: "en-US"
+  sample_rate: 16000
