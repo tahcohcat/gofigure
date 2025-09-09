@@ -47,10 +47,10 @@ func (c *Client) GenerateResponse(ctx context.Context, prompt string) (string, e
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(c.config.Timeout)*time.Second)
 	defer cancel()
 
-	c.logger.Info(fmt.Sprintf("Generating response with model %s", c.config.Model))
+	c.logger.Debug(fmt.Sprintf("Generating response with model %s", c.config.Model))
 
 	var response string
-	
+
 	// todo: there are lots of interesting
 	//  metadata to show in debugging mode
 	f := func(g api.GenerateResponse) error {

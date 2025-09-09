@@ -16,12 +16,28 @@ const (
 	ColorRed    = "\033[31m"
 )
 
+type LogLevel string
+
+const (
+	LogLevelDebug LogLevel = "debug"
+	LogLevelInfo  LogLevel = "info"
+	LogLevelWarn  LogLevel = "warn"
+	LogLevelError LogLevel = "error"
+)
+
 type Log struct {
-	err error
+	level LogLevel
+	err   error
 }
 
 func New() *Log {
-	return &Log{}
+	return &Log{
+		level: LogLevelInfo,
+	}
+}
+
+func (l *Log) SetLevel(level LogLevel) {
+	l.level = level
 }
 
 func (l *Log) WithError(err error) *Log {
@@ -32,15 +48,38 @@ func (l *Log) timestamp() string {
 	return time.Now().Format("15:04:05")
 }
 
-func (l *Log) Info(msg string) {
+func (l *Log) Debug(msg string) {
+	if l.level > LogLevelDebug {
+		return
+	}
 	if l.err != nil {
-		fmt.Printf("%s[%s]%s ℹ️  %s: %v%s\n", ColorBlue, l.timestamp(), ColorReset, msg, l.err, ColorReset)
+		fmt.Printf("%s[%s]%s ℹ️  %s: %v%s\n", ColorCyan, l.timestamp(), ColorReset, msg, l.err, ColorReset)
 		return
 	}
 	fmt.Printf("%s[%s]%s ℹ️  %s%s\n", ColorBlue, l.timestamp(), ColorReset, msg, ColorReset)
 }
 
+func (l *Log) Info(msg string) {
+	if l.level > LogLevelInfo {
+		return
+	}
+
+	fmt.Printf("%s[%s]%s ℹ️  %s%s\n", ColorBlue, l.timestamp(), ColorReset, msg, ColorReset)
+}
+
+func (l *Log) Character(character, msg string) {
+	if l.level > LogLevelInfo {
+		return
+	}
+
+	fmt.Printf("%s[%s]%s [%s]ℹ%s  %s", ColorBlue, l.timestamp(), ColorBold, character, msg, ColorReset)
+}
+
 func (l *Log) Warn(msg string) {
+	if l.level > LogLevelWarn {
+		return
+	}
+
 	if l.err != nil {
 		fmt.Printf("%s[%s]%s ⚠️  %s: %v%s\n", ColorYellow, l.timestamp(), ColorReset, msg, l.err, ColorReset)
 		return

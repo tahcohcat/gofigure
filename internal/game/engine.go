@@ -58,10 +58,10 @@ func (e *Engine) Start() error {
 		return fmt.Errorf("ollama setup error: %w", err)
 	}
 
-	e.logger.Info("ollama connection verified")
-	fmt.Printf("🔍 Welcome Detective! You are investigating: %s\n", e.murder.Title)
-	fmt.Println(e.murder.Intro)
-	fmt.Println("\nType 'help' for available commands.")
+	e.logger.Debug("ollama connection verified")
+	e.logger.Info(fmt.Sprintf("🔍 Welcome Detective! You are investigating: %s\n", e.murder.Title))
+	e.logger.Info(e.murder.Intro)
+	e.logger.Info("Type 'help' for available commands.")
 
 	return e.gameLoop()
 }
@@ -158,7 +158,7 @@ func (e *Engine) interviewCharacter(charName string, scanner *bufio.Scanner) {
 			continue
 		}
 
-		fmt.Print("🤔 Thinking...")
+		e.logger.Debug("🤔 Thinking...")
 
 		ctx, cancel := context.WithTimeout(context.Background(),
 			time.Duration(e.config.Ollama.Timeout)*time.Second)
@@ -172,7 +172,7 @@ func (e *Engine) interviewCharacter(charName string, scanner *bufio.Scanner) {
 			continue
 		}
 
-		fmt.Printf("\r%s: %s\n", char.Name, answer)
+		e.logger.Character(char.Name, fmt.Sprintf("👨‍✈️.....\r%s: %s\n", char.Name, answer))
 	}
 }
 

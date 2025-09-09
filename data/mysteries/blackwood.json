@@ -1,33 +1,61 @@
 {
   "title": "The Blackwood Manor Murder",
-  "introduction": "It is a stormy evening at Blackwood Manor. The guests have gathered in the great hall when a terrible cry echoes through the corridors. Moments later, a body is found in the library. Tension fills the air as the residents and staff look uneasily at one another. Among them are Lady Blackwood, the stern matriarch of the house; Mr. Graves, the ever-watchful butler; Clara the nervous maid; and Colonel Hawthorne, a gruff family friend. All seem to know something—but not everyone is willing to tell the whole truth. It is up to you, detective, to uncover the secrets of Blackwood Manor and solve the murder before the night is through.",
+  "introduction": "It is a stormy evening at Blackwood Manor. The guests have gathered for Lady Blackwood's birthday celebration when a terrible cry echoes through the corridors at 9:47 PM. Moments later, Lord Blackwood's body is discovered in the library by the butler, Mr. Graves. The victim appears to have been struck by a heavy object. With the phone lines down due to the storm and the nearest constable miles away, it falls to you, detective, to question the household and uncover the truth before the killer strikes again.",
+  "victim": "Lord Blackwood",
   "killer": "Lady Blackwood",
   "weapon": "Candlestick",
   "location": "Library",
+  "motive": "Lord Blackwood discovered Lady Blackwood's affair and threatened divorce, which would leave her penniless",
   "characters": [
     {
       "name": "Lady Blackwood",
-      "personality": "Aristocratic, haughty, guarded",
-      "knowledge": ["Was in the library", "Knows about the candlestick"],
-      "reliable": false
+      "personality": "Aristocratic, charming but calculating, becomes defensive when pressed",
+      "knowledge": [
+        "Claims she was in the drawing room during the murder",
+        "Knows the candlestick was moved from the mantelpiece",
+        "Is aware of the argument with her husband earlier",
+        "Nervous about her whereabouts being questioned"
+      ],
+      "reliable": false,
+      "secrets": ["Having an affair with Dr. Finch", "Desperately needs money", "Was actually in the library"]
     },
     {
       "name": "Mr. Graves the Butler",
-      "personality": "Polite, evasive",
-      "knowledge": ["Saw someone sneaking around"],
-      "reliable": true
+      "personality": "Professional, observant, loyal to the household",
+      "knowledge": [
+        "Found the body at approximately 9:50 PM",
+        "Noticed Lady Blackwood seemed agitated during dinner",
+        "Saw Dr. Finch and Lady Blackwood whispering earlier",
+        "The library door was locked when he first tried it"
+      ],
+      "reliable": true,
+      "secrets": ["Suspects Lady Blackwood but is reluctant to accuse his employer"]
     },
     {
       "name": "Clara the Maid",
-      "personality": "Nervous, gossipy",
-      "knowledge": ["Heard noises in the library"],
-      "reliable": true
+      "personality": "Nervous, gossipy, eager to please",
+      "knowledge": [
+        "Heard raised voices from the library around 9:45 PM",
+        "Saw Lady Blackwood's dress had a small tear after dinner",
+        "Noticed the candlestick was missing when she cleaned earlier",
+        "Lord Blackwood seemed very upset about something today"
+      ],
+      "reliable": true,
+      "secrets": ["Overheard Lord Blackwood threatening divorce"]
     },
     {
       "name": "Colonel Hawthorne",
-      "personality": "Gruff, direct",
-      "knowledge": ["Thinks Lady Blackwood is suspicious"],
-      "reliable": true
+      "personality": "Gruff, direct, old military friend of Lord Blackwood",
+      "knowledge": [
+        "Had a drink with Lord Blackwood who seemed troubled",
+        "Lord Blackwood mentioned 'betrayal' and 'having been a fool'",
+        "Believes Lady Blackwood married for money, not love",
+        "Was in the smoking room playing cards during the incident"
+      ],
+      "reliable": true,
+      "secrets": [
+        "Lord Blackwood confided his suspicions about the affair"
+      ]
     },
     {
       "name": "Dr. Finch",
