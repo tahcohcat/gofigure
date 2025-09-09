@@ -16,6 +16,7 @@
         "Is aware of the argument with her husband earlier",
         "Nervous about her whereabouts being questioned"
       ],
+      "tts": [{"engine": "google", "model" :  "en-GB-Wavenet-N"}],
       "reliable": false,
       "secrets": ["Having an affair with Dr. Finch", "Desperately needs money", "Was actually in the library"]
     },
@@ -28,6 +29,7 @@
         "Saw Dr. Finch and Lady Blackwood whispering earlier",
         "The library door was locked when he first tried it"
       ],
+      "tts": [{"engine": "google", "model" :  "en-GB-Standard-D"}],
       "reliable": true,
       "secrets": ["Suspects Lady Blackwood but is reluctant to accuse his employer"]
     },
@@ -41,6 +43,7 @@
         "Lord Blackwood seemed very upset about something today"
       ],
       "reliable": true,
+      "tts": [{"engine": "google", "model" :  "en-US-Chirp3-HD-Sulafat"}],
       "secrets": ["Overheard Lord Blackwood threatening divorce"]
     },
     {
@@ -52,6 +55,7 @@
         "Believes Lady Blackwood married for money, not love",
         "Was in the smoking room playing cards during the incident"
       ],
+      "tts": [{"engine": "google", "model" :  "en-GB-Chirp3-HD-Iapetus"}],
       "reliable": true,
       "secrets": [
         "Lord Blackwood confided his suspicions about the affair"
@@ -61,25 +65,29 @@
       "name": "Dr. Finch",
       "personality": "Calm, logical",
       "knowledge": ["Knows cause of death was blunt force"],
-      "reliable": true
+      "reliable": true,
+      "tts": [{"engine": "google", "model" :  "en-IN-Chirp3-HD-Zubenelgenubi"}]
     },
     {
       "name": "Emily (the Niece)",
       "personality": "Sweet, innocent but hiding something",
       "knowledge": ["Saw the butler near the study"],
-      "reliable": false
+      "reliable": false,
+      "tts": [{"engine": "google", "model" :  "en-US-Wavenet-H"}]
     },
     {
       "name": "Mr. Moss the Gardener",
       "personality": "Simple, honest",
       "knowledge": ["Was outside during murder"],
-      "reliable": true
+      "reliable": true,
+      "tts": [{"engine": "google", "model" :  "en-AU-Wavenet-B"}]
     },
     {
       "name": "Reverend Clarke",
       "personality": "Pious, moralizing",
       "knowledge": ["Heard a scream"],
-      "reliable": true
+      "reliable": true,
+      "tts": [{"engine": "google", "model" :  "en-GB-Chirp3-HD-Enceladus"}]
     }
   ]
 }

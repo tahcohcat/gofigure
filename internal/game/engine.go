@@ -8,16 +8,21 @@ import (
 	"gofigure/config"
 	"gofigure/internal/logger"
 	"gofigure/internal/ollama"
+	"gofigure/internal/tts"
 	"os"
 	"strings"
 	"time"
 )
 
 type Engine struct {
-	murder       Murder
+	murder Murder
+
+	tts          tts.Tts
 	ollamaClient *ollama.Client
 	logger       *logger.Log
 	config       *config.Config
+
+	showResponses bool
 }
 
 func NewEngine(cfg *config.Config) (*Engine, error) {
@@ -26,10 +31,28 @@ func NewEngine(cfg *config.Config) (*Engine, error) {
 		return nil, fmt.Errorf("failed to create ollama client: %w", err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var t tts.Tts
+	t = tts.NewDummyTts()
+
+	if cfg.Tts.Enabled {
+		t, err = tts.NewGoogleTTS(ctx)
+		if err != nil {
+			logger.New().WithError(err).Error("failed to create tts TTS client")
+			t = tts.NewDummyTts()
+		} else {
+			logger.New().Debug("google tts client created")
+		}
+	}
+
 	return &Engine{
-		ollamaClient: ollamaClient,
-		logger:       logger.New(),
-		config:       cfg,
+		tts:           t,
+		ollamaClient:  ollamaClient,
+		logger:        logger.New(),
+		config:        cfg,
+		showResponses: false,
 	}, nil
 }
 
@@ -163,7 +186,7 @@ func (e *Engine) interviewCharacter(charName string, scanner *bufio.Scanner) {
 		ctx, cancel := context.WithTimeout(context.Background(),
 			time.Duration(e.config.Ollama.Timeout)*time.Second)
 
-		answer, err := char.GenerateResponse(ctx, question, e.murder, e.ollamaClient)
+		answer, err := char.AskQuestion(ctx, question, e.murder, e.ollamaClient)
 		cancel()
 
 		if err != nil {
@@ -172,8 +195,27 @@ func (e *Engine) interviewCharacter(charName string, scanner *bufio.Scanner) {
 			continue
 		}
 
-		e.logger.Character(char.Name, fmt.Sprintf("👨‍✈️.....\r%s: %s\n", char.Name, answer))
+		ctx, _ = context.WithTimeout(context.Background(),
+			time.Duration(e.config.Ollama.Timeout)*time.Second)
+
+		if err = e.tts.Speak(ctx, answer, e.findTtsModel(char)); err != nil {
+			logger.New().WithError(err).Error("character has lost their voice")
+		}
+
+		if e.showResponses {
+			e.logger.Character(char.Name, fmt.Sprintf("👨‍✈️.....\r%s: %s\n", char.Name, answer))
+		}
 	}
+}
+
+func (e *Engine) findTtsModel(character *Character) string {
+	for _, ttsOption := range character.TTS {
+		if ttsOption.Engine == e.tts.Name() {
+			return ttsOption.Model
+		}
+	}
+
+	return ""
 }
 
 func (e *Engine) findCharacter(name string) *Character {
@@ -210,6 +252,11 @@ func (e *Engine) processAccusation(accusation string) bool {
 	fmt.Printf("💡 Hint: The actual solution was %s with the %s in the %s\n",
 		e.murder.Killer, e.murder.Weapon, e.murder.Location)
 	return false
+}
+
+func (e *Engine) WithResponses(resp bool) *Engine {
+	e.showResponses = resp
+	return e
 }
 
 func loadMystery(filename string) (Murder, error) {

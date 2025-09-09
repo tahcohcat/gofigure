@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	cfgFile string
-	cfg     *config.Config
-	log     = logger.New()
+	cfgFile  string
+	showResp bool
+	cfg      *config.Config
+	log      = logger.New()
 )
 
 var rootCmd = &cobra.Command{
@@ -34,7 +35,7 @@ var playCmd = &cobra.Command{
 			return fmt.Errorf("failed to create engine: %w", err)
 		}
 
-		return e.WithMurder(mysteryFile).Start()
+		return e.WithMurder(mysteryFile).WithResponses(showResp).Start()
 	},
 }
 
@@ -52,6 +53,7 @@ var configCmd = &cobra.Command{
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./config.yaml)")
+	rootCmd.PersistentFlags().BoolVar(&showResp, "show-responses", false, "show responses in output")
 }
 
 func initConfig() {

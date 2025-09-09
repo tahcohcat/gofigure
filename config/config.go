@@ -6,6 +6,12 @@ import (
 
 type Config struct {
 	Ollama OllamaConfig `mapstructure:"ollama"`
+	Tts    TtsConfig    `mapstructure:"tts"`
+}
+
+type TtsConfig struct {
+	Type    string `mapstructure:"type"`
+	Enabled bool   `mapstructure:"enabled"`
 }
 
 type OllamaConfig struct {
@@ -23,7 +29,10 @@ func Load() (*Config, error) {
 	// Set defaults
 	viper.SetDefault("ollama.host", "http://localhost:11434")
 	viper.SetDefault("ollama.model", "llama3.2")
-	viper.SetDefault("ollama.timeout", 30)
+	viper.SetDefault("ollama.timeout", 50)
+
+	viper.SetDefault("tts.enabled", true)
+	viper.SetDefault("tts.type", "google")
 
 	// Allow environment variables
 	viper.SetEnvPrefix("GOFIGURE")
