@@ -1,6 +1,9 @@
 package logger
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Color codes for terminal output
 const (
@@ -22,22 +25,33 @@ func New() *Log {
 }
 
 func (l *Log) WithError(err error) *Log {
-	l.err = err
-	return l
+	return &Log{err: err}
 }
 
-func (l *Log) Warn(s string) {
-	if l.err != nil {
-		fmt.Printf("❌:%s. err :%w", ColorYellow, s, l.err, ColorReset)
-		return
-	}
-	fmt.Printf("❌:%s", ColorYellow, s, ColorReset)
+func (l *Log) timestamp() string {
+	return time.Now().Format("15:04:05")
 }
 
-func (l *Log) Error(s string) {
+func (l *Log) Info(msg string) {
 	if l.err != nil {
-		fmt.Printf("❌:%s. err :%w", ColorRed, s, l.err, ColorReset)
+		fmt.Printf("%s[%s]%s ℹ️  %s: %v%s\n", ColorBlue, l.timestamp(), ColorReset, msg, l.err, ColorReset)
 		return
 	}
-	fmt.Printf("❌:%s", ColorRed, s, ColorReset)
+	fmt.Printf("%s[%s]%s ℹ️  %s%s\n", ColorBlue, l.timestamp(), ColorReset, msg, ColorReset)
+}
+
+func (l *Log) Warn(msg string) {
+	if l.err != nil {
+		fmt.Printf("%s[%s]%s ⚠️  %s: %v%s\n", ColorYellow, l.timestamp(), ColorReset, msg, l.err, ColorReset)
+		return
+	}
+	fmt.Printf("%s[%s]%s ⚠️  %s%s\n", ColorYellow, l.timestamp(), ColorReset, msg, ColorReset)
+}
+
+func (l *Log) Error(msg string) {
+	if l.err != nil {
+		fmt.Printf("%s[%s]%s ❌ %s: %v%s\n", ColorRed, l.timestamp(), ColorReset, msg, l.err, ColorReset)
+		return
+	}
+	fmt.Printf("%s[%s]%s ❌ %s%s\n", ColorRed, l.timestamp(), ColorReset, msg, ColorReset)
 }

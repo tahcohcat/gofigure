@@ -2,45 +2,73 @@ package main
 
 import (
 	"fmt"
-	"gofigure/internal/engine"
+	"gofigure/config"
+	"gofigure/internal/game"
+	"gofigure/internal/logger"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	startGame = func(cmd *cobra.Command, args []string) {
-		mysteryFile := args[0]
-		e := engine.NewEngine().WithMurder(mysteryFile)
-		e.Start()
-	}
+	cfgFile string
+	cfg     *config.Config
+	log     = logger.New()
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "mystery",
-	Short: "Murder Mystery CLI game",
-	Long:  "A CLI murder mystery roleplay engine powered by Ollama and a JSON scenario definition.",
+	Use:   "gofigure",
+	Short: "Murder Mystery CLI game powered by Ollama",
+	Long:  "A CLI murder mystery roleplay engine powered by Ollama AI and JSON scenario definitions.",
 }
 
 var playCmd = &cobra.Command{
 	Use:   "play [mystery.json]",
 	Short: "Play a murder mystery",
 	Args:  cobra.ExactArgs(1),
-	Run:   startGame,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		mysteryFile := args[0]
+
+		e, err := game.NewEngine(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to create engine: %w", err)
+		}
+
+		return e.WithMurder(mysteryFile).Start()
+	},
 }
 
-var listCmd = &cobra.Command{
-	Use:   "list [mystery.json]",
-	Short: "List characters in a mystery",
-	Args:  cobra.ExactArgs(1),
-	Run:   startGame,
+var configCmd = &cobra.Command{
+	Use:   "config",
+	Short: "Show current configuration",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Current Configuration:\n")
+		fmt.Printf("  Ollama Host: %s\n", cfg.Ollama.Host)
+		fmt.Printf("  Ollama Model: %s\n", cfg.Ollama.Model)
+		fmt.Printf("  Timeout: %d seconds\n", cfg.Ollama.Timeout)
+	},
+}
+
+func init() {
+	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./config.yaml)")
+}
+
+func initConfig() {
+	var err error
+	cfg, err = config.Load()
+	if err != nil {
+		log.WithError(err).Error("Failed to load configuration")
+		os.Exit(1)
+	}
 }
 
 func main() {
 	rootCmd.AddCommand(playCmd)
-	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(configCmd)
+
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.WithError(err).Error("Command execution failed")
 		os.Exit(1)
 	}
 }

@@ -6,5 +6,6 @@ type Murder struct {
 	Killer     string      `json:"killer"`
 	Weapon     string      `json:"weapon"`
 	Location   string      `json:"location"`
+	Intro      string      `json:"introduction"`
 	Characters []Character `json:"characters"`
 }
