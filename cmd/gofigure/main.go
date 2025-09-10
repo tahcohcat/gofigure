@@ -79,8 +79,10 @@ func main() {
 	rootCmd.AddCommand(playCmd)
 	rootCmd.AddCommand(configCmd)
 
-	logger.GlobalLogLevel = logger.LogLevelDebug
-	logger.New().Debug("starting game [debug logging enabled]")
+	if debug {
+		logger.GlobalLogLevel = logger.LogLevelDebug
+		logger.New().Debug("starting game [debug logging enabled]")
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		log.WithError(err).Error("Command execution failed")

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gofigure/config"
 	"gofigure/internal/logger"
@@ -110,8 +111,8 @@ func (e *Engine) Start() error {
 
 	e.logger.Debug("ollama connection verified")
 
-	welcomeMessage := fmt.Sprintf("🔍 Welcome Detective! You are investigating: %s", e.murder.Title)
-	e.logger.Info(welcomeMessage)
+	welcomeMessage := fmt.Sprintf("Welcome Detective! You are investigating: %s", e.murder.Title)
+	e.logger.Info(fmt.Sprintf("🔍 %s", welcomeMessage))
 
 	// Read the introduction aloud if TTS is enabled and narrator TTS model is configured
 	if e.config.Tts.Enabled && len(e.murder.NarratorTTS) > 0 {
@@ -125,58 +126,6 @@ func (e *Engine) Start() error {
 
 	return e.gameLoop()
 }
-
-//func (e *Engine) gameLoopWithText() error {
-//
-//	e.logger.Info("Type 'help' for available commands.")
-//	scanner := bufio.NewScanner(os.Stdin)
-//
-//	for {
-//		fmt.Print("> ")
-//		if !scanner.Scan() {
-//			break
-//		}
-//		line := strings.TrimSpace(scanner.Text())
-//		parts := strings.SplitN(line, " ", 2)
-//
-//		if len(parts) == 0 {
-//			continue
-//		}
-//
-//		switch strings.ToLower(parts[0]) {
-//		case "help":
-//			e.showHelp()
-//
-//		case "list":
-//			e.listCharacters()
-//
-//		case "interview":
-//			if len(parts) < 2 {
-//				fmt.Println("Usage: interview <character>")
-//				continue
-//			}
-//			e.interviewCharacter(parts[1])
-//
-//		case "accuse":
-//			if len(parts) < 2 {
-//				fmt.Println("Usage: accuse <name> <weapon> <location>")
-//				continue
-//			}
-//			if e.processAccusation(parts[1]) {
-//				return nil // Game won
-//			}
-//
-//		case "quit", "exit":
-//			fmt.Println("Goodbye detective.")
-//			return nil
-//
-//		default:
-//			fmt.Println("Unknown command. Type 'help' for options.")
-//		}
-//	}
-//
-//	return nil
-//}
 
 func (e *Engine) gameLoop() error {
 
@@ -290,8 +239,11 @@ func (e *Engine) getPrompt() string {
 		if !e.scanner.Scan() {
 			break
 		}
+
+		return strings.TrimSpace(strings.ToLower(e.scanner.Text()))
 	}
-	return strings.TrimSpace(strings.ToLower(e.scanner.Text()))
+
+	return ""
 }
 
 func (e *Engine) startInterview(char *Character) {
@@ -306,12 +258,6 @@ func (e *Engine) startInterview(char *Character) {
 		if prompt == "" {
 			continue
 		}
-
-		//if input == "voice" && e.useMicInput {
-		//	fmt.Println("Switched to voice mode. Press ENTER to record questions:")
-		//	e.interviewWithVoice(char, scanner)
-		//	return
-		//}
 
 		e.processQuestion(char, prompt)
 	}
@@ -339,56 +285,10 @@ func (e *Engine) processQuestion(char *Character, question string) {
 		logger.New().WithError(err).Error("character has lost their voice")
 	}
 
-	if e.showResponses {
+	if !e.useMicInput || e.showResponses {
 		e.logger.Character(char.Name, fmt.Sprintf("👨‍✈️.....\r%s: %s\n", char.Name, answer))
 	}
 }
-
-//func (e *Engine) getVoiceInput() (string, error) {
-//	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-//	defer cancel()
-//
-//	fmt.Println("🎙️ Press ENTER to start recording...")
-//	fmt.Scanln()
-//
-//	transcriptChan, err := e.sst.StartListening(ctx)
-//	if err != nil {
-//		return "", fmt.Errorf("failed to start listening: %w", err)
-//	}
-//
-//	fmt.Println("🔴 Recording... Press ENTER to stop")
-//	go func() {
-//		fmt.Scanln()
-//		e.sst.StopListening()
-//	}()
-//
-//	// For Google SST, we need to manually process the audio chunk
-//	if googleSST, ok := e.sst.(*sst.GoogleSST); ok {
-//		go func() {
-//			time.Sleep(1 * time.Second) // Give some time to collect audio
-//			for e.sst.IsListening() {
-//				googleSST.ProcessAudioChunk(ctx)
-//				time.Sleep(100 * time.Millisecond)
-//			}
-//		}()
-//	}
-//
-//	// Wait for transcript or timeout
-//	select {
-//	case transcript := <-transcriptChan:
-//		err := e.sst.StopListening()
-//		if err != nil {
-//			return "", err
-//		}
-//		return strings.TrimSpace(transcript), nil
-//	case <-ctx.Done():
-//		err := e.sst.StopListening()
-//		if err != nil {
-//			return "", err
-//		}
-//		return "", fmt.Errorf("voice input timed out")
-//	}
-//}
 
 func (e *Engine) getVoiceInput() (string, error) {
 	fmt.Println("🎙️ Press ENTER to start recording...")
@@ -404,6 +304,9 @@ func (e *Engine) getVoiceInput() (string, error) {
 	}
 
 	fmt.Println("🔴 Recording... Press ENTER to stop")
+
+	// Channel to signal when user wants to stop
+	stopChan := make(chan bool, 1)
 	go func() {
 		fmt.Scanln()
 		logger.New().Debug("recording stop pressed. stopping sst and voice listener")
@@ -411,6 +314,7 @@ func (e *Engine) getVoiceInput() (string, error) {
 		if err != nil {
 			logger.New().WithError(err).Error("failed to stop listening")
 		}
+		stopChan <- true
 	}()
 
 	count := 0
@@ -418,58 +322,83 @@ func (e *Engine) getVoiceInput() (string, error) {
 	if googleSST, ok := e.sst.(*sst.GoogleSST); ok {
 		go func() {
 			log.Debug("[voice] initial delay for sst collection")
-			time.Sleep(1 * time.Second) // Give some time to collect audio
+			//time.Sleep(2 * time.Second) // Longer initial delay to collect more audio
+			time.Sleep(200 * time.Millisecond) // Longer initial delay to collect more audio
+
+			processingInterval := 2 * time.Second // Process chunks every 2 seconds instead of 100ms
+			ticker := time.NewTicker(processingInterval)
+			defer ticker.Stop()
 
 			for e.sst.IsListening() {
-				count++
-				log.Debug(fmt.Sprintf("[voice] sst is listening [chunk:%d]", count))
-				err := googleSST.ProcessAudioChunk(ctx)
-				if err != nil {
-					log.WithError(err).Error(fmt.Sprintf("failed to process audio chunk [chunk:%d]", count))
+				select {
+				case <-ticker.C:
+					count++
+
+					// Get debug stats before processing
+					if debugStats := googleSST.GetDebugStats(); debugStats != nil {
+						log.Debug(fmt.Sprintf("[voice] pre-processing stats [chunk:%d]: %+v", count, debugStats))
+					}
+
+					log.Debug(fmt.Sprintf("[voice] processing audio chunk [chunk:%d]", count))
+
+					// Create a new context for each audio processing request
+					chunkCtx, chunkCancel := context.WithTimeout(context.Background(), 15*time.Second)
+					err := googleSST.ProcessAudioChunk(chunkCtx)
+					chunkCancel()
+
+					if err != nil {
+						log.WithError(err).Error(fmt.Sprintf("failed to process audio chunk [chunk:%d]", count))
+					} else {
+						log.Debug(fmt.Sprintf("[voice] successfully processed chunk [chunk:%d]", count))
+					}
+
+				case <-time.After(100 * time.Millisecond):
+					// Check if we should stop listening
+					if !e.sst.IsListening() {
+						log.Debug("[voice] sst no longer listening, exiting processing loop")
+						return
+					}
 				}
-				time.Sleep(100 * time.Millisecond)
 			}
 
-			log.Debug("[voice] sst no longer listening. lets exit")
-			<-ctx.Done()
+			log.Debug("[voice] sst no longer listening. processing loop exited")
 		}()
 	}
 
+	var transcripts []string
 	var prompt string
-	// Wait for transcript or timeout
-	select {
-	case transcript := <-transcriptChan:
-		if len(prompt) > 0 {
-			prompt += fmt.Sprintf("%s %s", prompt, transcript)
-		} else {
-			prompt = transcript
+
+	// Wait for transcript, user stop, or timeout
+	for {
+		select {
+		case transcript := <-transcriptChan:
+			if strings.TrimSpace(transcript) != "" {
+				transcripts = append(transcripts, strings.TrimSpace(transcript))
+				// Rebuild prompt from all transcripts in order
+				prompt = strings.Join(transcripts, " ")
+				logger.New().Debug(fmt.Sprintf("[engine] transcript received. transcripts so far: %v, combined prompt: [%s]", transcripts, prompt))
+			}
+			// Continue listening for more transcripts instead of returning immediately
+
+		case <-stopChan:
+			logger.New().Debug("[engine] user requested stop")
+			prompt = strings.ReplaceAll(prompt, ".", " ")
+			return strings.TrimSpace(prompt), nil
+
+		case <-ctx.Done():
+			logger.New().Debug("[engine] context timeout")
+			err = e.sst.StopListening()
+			if err != nil {
+				logger.New().WithError(err).Error("failed to stop listening on timeout")
+			}
+
+			if len(prompt) > 0 {
+				prompt = strings.ReplaceAll(prompt, ".", " ")
+				return strings.TrimSpace(prompt), nil
+			}
+			return "", fmt.Errorf("voice input timed out")
 		}
-
-		logger.New().Debug(fmt.Sprintf("[engine] transcript received. add to prompt and keep listening [prompt:%s]", prompt))
-		//err := e.sst.StopListening()
-		//if err != nil {
-		//	return "", err
-		//}
-		//return strings.TrimSpace(transcript), nil
-	case <-ctx.Done():
-		logger.New().Debug("[engine] context ended. stop listening")
-
-		// intentional cancelling
-		if !e.sst.IsListening() {
-			return prompt, nil
-		}
-
-		// we were not done and was asked by context
-		// to wrap things up. should report this
-		err = e.sst.StopListening()
-		if err != nil {
-			return "", err
-		}
-
-		return "", fmt.Errorf("voice input timed out")
 	}
-
-	return prompt, nil
 }
 
 func (e *Engine) findTtsModel(character *Character) string {
@@ -515,7 +444,9 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 	// Speak welcome message
 	go func() {
 		if err := e.tts.Speak(ctx, welcomeMessage, narratorModel); err != nil {
-			e.logger.WithError(err).Error("failed to speak welcome message")
+			if !errors.Is(err, context.Canceled) {
+				e.logger.WithError(err).Error("failed to speak welcome message")
+			}
 		}
 		ttsDone <- true
 	}()
@@ -557,11 +488,25 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 }
 
 func (e *Engine) findCharacter(name string) *Character {
+
+	name = strings.ToLower(name)
+
 	for i := range e.murder.Characters {
-		if strings.Contains(strings.ToLower(e.murder.Characters[i].Name), strings.ToLower(name)) {
+		if strings.Contains(strings.ToLower(e.murder.Characters[i].Name), name) {
 			return &e.murder.Characters[i]
 		}
 	}
+
+	// try individual words
+	words := strings.Split(name, " ")
+	for _, word := range words {
+		for i := range e.murder.Characters {
+			if strings.Contains(strings.ToLower(e.murder.Characters[i].Name), word) {
+				return &e.murder.Characters[i]
+			}
+		}
+	}
+
 	return nil
 }
 
