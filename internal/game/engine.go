@@ -26,6 +26,9 @@ type Engine struct {
 
 	showResponses bool
 	useMicInput   bool
+	showHints     bool
+
+	scanner *bufio.Scanner
 }
 
 func NewEngine(cfg *config.Config) (*Engine, error) {
@@ -72,7 +75,6 @@ func NewEngine(cfg *config.Config) (*Engine, error) {
 		config:        cfg,
 		showResponses: false,
 		useMicInput:   true,
-
 	}, nil
 }
 
@@ -111,10 +113,6 @@ func (e *Engine) Start() error {
 	welcomeMessage := fmt.Sprintf("🔍 Welcome Detective! You are investigating: %s", e.murder.Title)
 	e.logger.Info(welcomeMessage)
 
-	welcomeMessage := fmt.Sprintf("🔍 Welcome Detective! You are investigating: %s", e.murder.Title)
-	e.logger.Info(welcomeMessage)
-
-
 	// Read the introduction aloud if TTS is enabled and narrator TTS model is configured
 	if e.config.Tts.Enabled && len(e.murder.NarratorTTS) > 0 {
 		narratorModel := e.findNarratorTtsModel()
@@ -124,25 +122,74 @@ func (e *Engine) Start() error {
 	}
 
 	e.logger.Info(e.murder.Intro)
-	e.logger.Info("Type 'help' for available commands.")
-
-	if e.useMicInput {
-		e.logger.Info("🎙️ Microphone input enabled for interviews!")
-	}
 
 	return e.gameLoop()
 }
 
+//func (e *Engine) gameLoopWithText() error {
+//
+//	e.logger.Info("Type 'help' for available commands.")
+//	scanner := bufio.NewScanner(os.Stdin)
+//
+//	for {
+//		fmt.Print("> ")
+//		if !scanner.Scan() {
+//			break
+//		}
+//		line := strings.TrimSpace(scanner.Text())
+//		parts := strings.SplitN(line, " ", 2)
+//
+//		if len(parts) == 0 {
+//			continue
+//		}
+//
+//		switch strings.ToLower(parts[0]) {
+//		case "help":
+//			e.showHelp()
+//
+//		case "list":
+//			e.listCharacters()
+//
+//		case "interview":
+//			if len(parts) < 2 {
+//				fmt.Println("Usage: interview <character>")
+//				continue
+//			}
+//			e.interviewCharacter(parts[1])
+//
+//		case "accuse":
+//			if len(parts) < 2 {
+//				fmt.Println("Usage: accuse <name> <weapon> <location>")
+//				continue
+//			}
+//			if e.processAccusation(parts[1]) {
+//				return nil // Game won
+//			}
+//
+//		case "quit", "exit":
+//			fmt.Println("Goodbye detective.")
+//			return nil
+//
+//		default:
+//			fmt.Println("Unknown command. Type 'help' for options.")
+//		}
+//	}
+//
+//	return nil
+//}
+
 func (e *Engine) gameLoop() error {
-	scanner := bufio.NewScanner(os.Stdin)
+
+	if e.useMicInput {
+		e.logger.Info("🎙️ Microphone input enabled for interviews!")
+	} else {
+		e.logger.Info("Type 'help' for available commands.")
+		e.scanner = bufio.NewScanner(os.Stdin)
+	}
 
 	for {
-		fmt.Print("> ")
-		if !scanner.Scan() {
-			break
-		}
-		line := strings.TrimSpace(scanner.Text())
-		parts := strings.SplitN(line, " ", 2)
+		prompt := e.getPrompt()
+		parts := strings.SplitN(prompt, " ", 2)
 
 		if len(parts) == 0 {
 			continue
@@ -160,7 +207,7 @@ func (e *Engine) gameLoop() error {
 				fmt.Println("Usage: interview <character>")
 				continue
 			}
-			e.interviewCharacter(parts[1], scanner)
+			e.interviewCharacter(parts[1])
 
 		case "accuse":
 			if len(parts) < 2 {
@@ -179,8 +226,6 @@ func (e *Engine) gameLoop() error {
 			fmt.Println("Unknown command. Type 'help' for options.")
 		}
 	}
-
-	return nil
 }
 
 func (e *Engine) showHelp() {
@@ -209,90 +254,66 @@ func (e *Engine) listCharacters() {
 	fmt.Println()
 }
 
-func (e *Engine) interviewCharacter(charName string, scanner *bufio.Scanner) {
+func (e *Engine) interviewCharacter(charName string) {
 	char := e.findCharacter(charName)
 	if char == nil {
-		fmt.Printf("No character named '%s' found. Type 'list' to see available characters.\n", charName)
+		fmt.Printf("No character named '%s' found. Enter 'list' command to see available characters.\n", charName)
 		return
 	}
 
 	fmt.Printf("\n🎭 You are now interviewing %s\n", char.Name)
-	fmt.Printf("Personality: %s\n", char.Personality)
-	
-	if e.useMicInput {
-		fmt.Println("🎙️ Voice mode enabled - Press ENTER to record questions (type 'text' to switch to typing, 'exit' to stop):")
-		e.interviewWithVoice(char, scanner)
-	} else {
-		fmt.Println("Ask them questions (type 'exit' to stop):")
-		e.interviewWithText(char, scanner)
+
+	if e.showHints {
+		fmt.Printf("Personality: %s\n", char.Personality)
 	}
+
+	e.startInterview(char)
 }
 
-func (e *Engine) interviewWithVoice(char *Character, scanner *bufio.Scanner) {
+func (e *Engine) getPrompt() string {
 
+	// mic prompt
 	if e.useMicInput {
-		fmt.Println("💡 Tip: Type 'mic' to use voice input (push-to-talk), or continue typing normally")
-	}
-
-
-		if input == "exit" {
-			fmt.Println("Interview ended.\n")
-			break
-		}
-
-		
-		if input == "text" {
-			fmt.Println("Switched to text mode. Type your questions:")
-			e.interviewWithText(char, scanner)
-			return
-		}
-		
-		// If they typed something other than a command, use it as a text question
-		if input != "" {
-			e.processQuestion(char, input)
-			continue
-		}
-
-		// Empty input means they want to use voice
-		question, err := e.getVoiceInput()
+		prompt, err := e.getVoiceInput()
 		if err != nil {
 			fmt.Printf("Voice input failed: %v\n", err)
-			continue
+			return ""
 		}
-		if question == "" {
-			fmt.Println("No speech detected, please try again.")
-
-			continue
-		}
-		fmt.Printf("You asked: %s\n", question)
-		e.processQuestion(char, question)
+		s := strings.TrimSpace(strings.ToLower(prompt))
+		fmt.Printf("[captured] %s\n", s)
+		return s
 	}
+
+	// text prompt
+	for {
+		fmt.Print("> ")
+		if !e.scanner.Scan() {
+			break
+		}
+	}
+	return strings.TrimSpace(strings.ToLower(e.scanner.Text()))
 }
 
+func (e *Engine) startInterview(char *Character) {
 
-func (e *Engine) interviewWithText(char *Character, scanner *bufio.Scanner) {
 	for {
-		fmt.Print("\nQ: ")
-		if !scanner.Scan() {
+		prompt := e.getPrompt()
+
+		if prompt == "exit" || prompt == "quit" {
+			fmt.Println("Interview ended")
 			break
 		}
-		input := strings.TrimSpace(scanner.Text())
-		
-		if input == "exit" {
-			fmt.Println("Interview ended.\n")
-			break
-		}
-		if input == "" {
+		if prompt == "" {
 			continue
 		}
-		
-		if input == "voice" && e.useMicInput {
-			fmt.Println("Switched to voice mode. Press ENTER to record questions:")
-			e.interviewWithVoice(char, scanner)
-			return
-		}
 
-		e.processQuestion(char, input)
+		//if input == "voice" && e.useMicInput {
+		//	fmt.Println("Switched to voice mode. Press ENTER to record questions:")
+		//	e.interviewWithVoice(char, scanner)
+		//	return
+		//}
+
+		e.processQuestion(char, prompt)
 	}
 }
 
@@ -323,12 +344,58 @@ func (e *Engine) processQuestion(char *Character, question string) {
 	}
 }
 
-func (e *Engine) getVoiceInput() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+//func (e *Engine) getVoiceInput() (string, error) {
+//	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+//	defer cancel()
+//
+//	fmt.Println("🎙️ Press ENTER to start recording...")
+//	fmt.Scanln()
+//
+//	transcriptChan, err := e.sst.StartListening(ctx)
+//	if err != nil {
+//		return "", fmt.Errorf("failed to start listening: %w", err)
+//	}
+//
+//	fmt.Println("🔴 Recording... Press ENTER to stop")
+//	go func() {
+//		fmt.Scanln()
+//		e.sst.StopListening()
+//	}()
+//
+//	// For Google SST, we need to manually process the audio chunk
+//	if googleSST, ok := e.sst.(*sst.GoogleSST); ok {
+//		go func() {
+//			time.Sleep(1 * time.Second) // Give some time to collect audio
+//			for e.sst.IsListening() {
+//				googleSST.ProcessAudioChunk(ctx)
+//				time.Sleep(100 * time.Millisecond)
+//			}
+//		}()
+//	}
+//
+//	// Wait for transcript or timeout
+//	select {
+//	case transcript := <-transcriptChan:
+//		err := e.sst.StopListening()
+//		if err != nil {
+//			return "", err
+//		}
+//		return strings.TrimSpace(transcript), nil
+//	case <-ctx.Done():
+//		err := e.sst.StopListening()
+//		if err != nil {
+//			return "", err
+//		}
+//		return "", fmt.Errorf("voice input timed out")
+//	}
+//}
 
+func (e *Engine) getVoiceInput() (string, error) {
 	fmt.Println("🎙️ Press ENTER to start recording...")
 	fmt.Scanln()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	transcriptChan, err := e.sst.StartListening(ctx)
 	if err != nil {
@@ -338,47 +405,10 @@ func (e *Engine) getVoiceInput() (string, error) {
 	fmt.Println("🔴 Recording... Press ENTER to stop")
 	go func() {
 		fmt.Scanln()
-		e.sst.StopListening()
-	}()
-
-	// For Google SST, we need to manually process the audio chunk
-	if googleSST, ok := e.sst.(*sst.GoogleSST); ok {
-		go func() {
-			time.Sleep(1 * time.Second) // Give some time to collect audio
-			for e.sst.IsListening() {
-				googleSST.ProcessAudioChunk(ctx)
-				time.Sleep(100 * time.Millisecond)
-			}
-		}()
-	}
-
-	// Wait for transcript or timeout
-	select {
-	case transcript := <-transcriptChan:
-		e.sst.StopListening()
-		return strings.TrimSpace(transcript), nil
-	case <-ctx.Done():
-		e.sst.StopListening()
-		return "", fmt.Errorf("voice input timed out")
-	}
-}
-
-func (e *Engine) getVoiceInput() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	fmt.Println("🎙️ Press ENTER to start recording...")
-	fmt.Scanln()
-
-	transcriptChan, err := e.sst.StartListening(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to start listening: %w", err)
-	}
-
-	fmt.Println("🔴 Recording... Press ENTER to stop")
-	go func() {
-		fmt.Scanln()
-		e.sst.StopListening()
+		err := e.sst.StopListening()
+		if err != nil {
+			logger.New().WithError(err).Error("failed to stop listening")
+		}
 	}()
 
 	// For Google SST, we need to manually process the audio chunk
@@ -423,27 +453,26 @@ func (e *Engine) findNarratorTtsModel() string {
 	return ""
 }
 
-
 func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel string) {
 	fmt.Println("🎬 Press ENTER to skip narration, or wait to listen...")
-	
+
 	// Create a channel to signal if user wants to skip
 	skipChan := make(chan bool, 1)
-	
+
 	// Goroutine to listen for user input
 	go func() {
 		fmt.Scanln()
 		skipChan <- true
 	}()
-	
+
 	// Start with welcome message
 	ctx, cancel := context.WithTimeout(context.Background(),
 		time.Duration(e.config.Ollama.Timeout)*time.Second)
 	defer cancel()
-	
+
 	// Create channels for TTS completion
 	ttsDone := make(chan bool, 2)
-	
+
 	// Speak welcome message
 	go func() {
 		if err := e.tts.Speak(ctx, welcomeMessage, narratorModel); err != nil {
@@ -451,7 +480,7 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 		}
 		ttsDone <- true
 	}()
-	
+
 	// Wait for either user skip or TTS completion
 	select {
 	case <-skipChan:
@@ -460,7 +489,7 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 	case <-ttsDone:
 		// Welcome message finished, check if user wants to skip intro
 	}
-	
+
 	// Check again for skip before intro
 	select {
 	case <-skipChan:
@@ -469,7 +498,7 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 	default:
 		// Continue with introduction
 	}
-	
+
 	// Speak the introduction
 	go func() {
 		if err := e.tts.Speak(ctx, e.murder.Intro, narratorModel); err != nil {
@@ -477,7 +506,7 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 		}
 		ttsDone <- true
 	}()
-	
+
 	// Wait for either user skip or intro completion
 	select {
 	case <-skipChan:
@@ -487,7 +516,6 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 		fmt.Println("🎬 Narration complete. The investigation begins!")
 	}
 }
-
 
 func (e *Engine) findCharacter(name string) *Character {
 	for i := range e.murder.Characters {

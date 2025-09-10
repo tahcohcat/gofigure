@@ -11,16 +11,16 @@ import (
 )
 
 type GoogleSST struct {
-	client         *speech.Client
-	languageCode   string
-	sampleRate     int
-	
+	client       *speech.Client
+	languageCode string
+	sampleRate   int
+
 	// Audio capture components
-	malgoContext   *malgo.AllocatedContext
-	device         *malgo.Device
-	audioBuffer    []byte
-	recording      bool
-	
+	malgoContext *malgo.AllocatedContext
+	device       *malgo.Device
+	audioBuffer  []byte
+	recording    bool
+
 	// Channels for communication
 	transcriptChan chan string
 	errorChan      chan error
@@ -80,7 +80,7 @@ func (g *GoogleSST) StartListening(ctx context.Context) (<-chan string, error) {
 
 	g.device = device
 	g.recording = true
-	
+
 	return g.transcriptChan, nil
 }
 
@@ -90,7 +90,7 @@ func (g *GoogleSST) StopListening() error {
 	}
 
 	g.recording = false
-	
+
 	if g.device != nil {
 		g.device.Stop()
 		g.device.Uninit()
@@ -155,20 +155,29 @@ func (g *GoogleSST) ProcessAudioChunk(ctx context.Context) error {
 
 // Close cleans up resources
 func (g *GoogleSST) Close() error {
-	g.StopListening()
-	
+	err := g.StopListening()
+	if err != nil {
+		return err
+	}
+
 	if g.malgoContext != nil {
-		g.malgoContext.Uninit()
+		err := g.malgoContext.Uninit()
+		if err != nil {
+			return err
+		}
 		g.malgoContext = nil
 	}
-	
+
 	if g.client != nil {
-		g.client.Close()
+		err := g.client.Close()
+		if err != nil {
+			return err
+		}
 		g.client = nil
 	}
-	
+
 	close(g.transcriptChan)
 	close(g.errorChan)
-	
+
 	return nil
 }
