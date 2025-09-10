@@ -8,6 +8,7 @@ require (
 	github.com/faiface/beep v1.1.0
 	github.com/gen2brain/malgo v0.11.23
 	github.com/ollama/ollama v0.11.10
+	github.com/schollz/closestmatch v2.1.0+incompatible
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822
@@ -27,6 +28,7 @@ require (
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
+	github.com/hajimehoshi/go-mp3 v0.3.0 // indirect
 	github.com/hajimehoshi/oto v0.7.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect

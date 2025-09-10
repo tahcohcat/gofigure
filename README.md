@@ -312,6 +312,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **gen2brain/malgo** - For cross-platform audio capture
 - **spf13/cobra** - For the CLI framework
 - **spf13/viper** - For configuration management
+- **audio soundtrack** - Credit [Kesha](https://ketsa.uk//). Not for modified distribution or commercial use
 
 ## 🎪 Fun Examples
 

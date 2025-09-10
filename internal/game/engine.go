@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"gofigure/config"
+	"gofigure/internal/game/audio"
 	"gofigure/internal/logger"
 	"gofigure/internal/ollama"
 	"gofigure/internal/sst"
@@ -67,6 +68,9 @@ func NewEngine(cfg *config.Config) (*Engine, error) {
 			logger.New().Debug("google sst client created")
 		}
 	}
+
+	// play background music
+	audio.PlayBackgroundMusic("data/audio/Ketsa - Full Circles.mp3", -6)
 
 	return &Engine{
 		tts:           t,
@@ -509,6 +513,8 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 func (e *Engine) findCharacter(name string) *Character {
 
 	name = strings.ToLower(name)
+	name = strings.TrimSpace(name)
+	logger.New().Debug(fmt.Sprintf("[engine] finding character '%s'", name))
 
 	for i := range e.murder.Characters {
 		if strings.Contains(strings.ToLower(e.murder.Characters[i].Name), name) {
@@ -516,11 +522,21 @@ func (e *Engine) findCharacter(name string) *Character {
 		}
 	}
 
-	// try individual words
+	// try individual words - exact match
 	words := strings.Split(name, " ")
 	for _, word := range words {
 		for i := range e.murder.Characters {
 			if strings.Contains(strings.ToLower(e.murder.Characters[i].Name), word) {
+				return &e.murder.Characters[i]
+			}
+		}
+	}
+
+	// try individual words - closest
+	for _, word := range words {
+		for i := range e.murder.Characters {
+			n := e.murder.closesCharacterMatches().Closest(word)
+			if strings.Contains(strings.ToLower(e.murder.Characters[i].Name), strings.ToLower(n)) {
 				return &e.murder.Characters[i]
 			}
 		}

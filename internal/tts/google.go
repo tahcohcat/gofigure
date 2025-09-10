@@ -3,13 +3,14 @@ package tts
 import (
 	"bytes"
 	"context"
-	"time"
+	"fmt"
+	"gofigure/internal/game/audio"
+	"strings"
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	tts "cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 
 	"github.com/faiface/beep"
-	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/wav"
 )
 
@@ -31,6 +32,8 @@ func (g *GoogleTTS) Speak(ctx context.Context, text, model string) error {
 		model = "en-GB-Chirp3-HD-Charon"
 	}
 
+	languageCode := getLanguageCode(model)
+
 	req := &tts.SynthesizeSpeechRequest{
 		Input: &tts.SynthesisInput{
 			InputSource: &tts.SynthesisInput_Text{
@@ -41,11 +44,12 @@ func (g *GoogleTTS) Speak(ctx context.Context, text, model string) error {
 			//Prompt: &text,
 		},
 		Voice: &tts.VoiceSelectionParams{
-			LanguageCode: "en-GB",
+			LanguageCode: languageCode,
 			Name:         model,
 		},
 		AudioConfig: &tts.AudioConfig{
-			AudioEncoding: tts.AudioEncoding_LINEAR16, // WAV PCM
+			SampleRateHertz: 44100,
+			AudioEncoding:   tts.AudioEncoding_LINEAR16, // WAV PCM
 		},
 	}
 
@@ -54,25 +58,34 @@ func (g *GoogleTTS) Speak(ctx context.Context, text, model string) error {
 		return err
 	}
 
+	done := make(chan bool)
+
 	// Decode audio in memory
-	stream, format, err := wav.Decode(bytes.NewReader(resp.AudioContent))
+	stream, _, err := wav.Decode(bytes.NewReader(resp.AudioContent))
 	if err != nil {
 		return err
 	}
 	defer stream.Close()
 
-	// Initialize speaker
-	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	if err != nil {
-		return err
-	}
+	ttsStream := beep.Seq(
+		stream,
+		beep.Callback(func() {
+			done <- true
+		}),
+	)
 
-	done := make(chan bool)
-	speaker.Play(beep.Seq(stream, beep.Callback(func() {
-		done <- true
-	})))
+	audio.PlayTTS(ttsStream)
+
 	<-done
 	return nil
+}
+
+func getLanguageCode(model string) string {
+	t := strings.Split(model, "-")
+	if len(t) < 3 {
+		return model
+	}
+	return fmt.Sprintf("%s-%s", t[0], t[1])
 }
 
 func (g *GoogleTTS) Name() string {

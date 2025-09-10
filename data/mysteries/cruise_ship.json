@@ -39,7 +39,7 @@
         "Knows Marcus had been receiving threatening messages"
       ],
       "reliable": false,
-      "tts": [{"engine": "google", "model": "it-IT-Chirp3-HD-Titan"}],
+      "tts": [{"engine": "google", "model": "en-US-Chirp-HD-F"}],
       "secrets": [
         "She's actually Marcus's ex-wife who he left for another woman",
         "She booked the cruise specifically to confront him",
@@ -107,7 +107,7 @@
         "Knows about various passenger complaints and crew issues"
       ],
       "reliable": true,
-      "tts": [{"engine": "google", "model": "en-AU-Chirp3-HD-Dione"}],
+      "tts": [{"engine": "google", "model": "en-US-Chirp3-HD-Erinome"}],
       "secrets": [
         "She's been covering for crew members who don't have proper work visas",
         "She knows about several illegal activities happening on the ship"
