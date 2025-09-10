@@ -7,11 +7,19 @@ import (
 type Config struct {
 	Ollama OllamaConfig `mapstructure:"ollama"`
 	Tts    TtsConfig    `mapstructure:"tts"`
+	Sst    SstConfig    `mapstructure:"sst"`
 }
 
 type TtsConfig struct {
 	Type    string `mapstructure:"type"`
 	Enabled bool   `mapstructure:"enabled"`
+}
+
+type SstConfig struct {
+	Enabled      bool   `mapstructure:"enabled"`
+	Provider     string `mapstructure:"provider"`
+	LanguageCode string `mapstructure:"language_code"`
+	SampleRate   int    `mapstructure:"sample_rate"`
 }
 
 type OllamaConfig struct {
@@ -33,6 +41,11 @@ func Load() (*Config, error) {
 
 	viper.SetDefault("tts.enabled", true)
 	viper.SetDefault("tts.type", "google")
+
+	viper.SetDefault("sst.enabled", true)
+	viper.SetDefault("sst.provider", "google")
+	viper.SetDefault("sst.language_code", "en-US")
+	viper.SetDefault("sst.sample_rate", 16000)
 
 	// Allow environment variables
 	viper.SetEnvPrefix("GOFIGURE")

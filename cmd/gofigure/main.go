@@ -13,6 +13,7 @@ import (
 var (
 	cfgFile  string
 	showResp bool
+	useMic   bool
 	cfg      *config.Config
 	log      = logger.New()
 )
@@ -35,7 +36,7 @@ var playCmd = &cobra.Command{
 			return fmt.Errorf("failed to create engine: %w", err)
 		}
 
-		return e.WithMurder(mysteryFile).WithResponses(showResp).Start()
+		return e.WithMurder(mysteryFile).WithResponses(showResp).WithMicInput(useMic).Start()
 	},
 }
 
@@ -47,6 +48,10 @@ var configCmd = &cobra.Command{
 		fmt.Printf("  Ollama Host: %s\n", cfg.Ollama.Host)
 		fmt.Printf("  Ollama Model: %s\n", cfg.Ollama.Model)
 		fmt.Printf("  Timeout: %d seconds\n", cfg.Ollama.Timeout)
+		fmt.Printf("  TTS Enabled: %t\n", cfg.Tts.Enabled)
+		fmt.Printf("  SST Enabled: %t\n", cfg.Sst.Enabled)
+		fmt.Printf("  SST Provider: %s\n", cfg.Sst.Provider)
+		fmt.Printf("  SST Language: %s\n", cfg.Sst.LanguageCode)
 	},
 }
 
@@ -54,6 +59,9 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./config.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&showResp, "show-responses", false, "show responses in output")
+	
+	// Add mic flag to play command specifically
+	playCmd.Flags().BoolVar(&useMic, "mic", false, "enable microphone input during interviews (push-to-talk)")
 }
 
 func initConfig() {
