@@ -397,6 +397,7 @@ func (e *Engine) getVoiceInput() (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	log := logger.New()
 	transcriptChan, err := e.sst.StartListening(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to start listening: %w", err)
@@ -405,32 +406,70 @@ func (e *Engine) getVoiceInput() (string, error) {
 	fmt.Println("🔴 Recording... Press ENTER to stop")
 	go func() {
 		fmt.Scanln()
+		logger.New().Debug("recording stop pressed. stopping sst and voice listener")
 		err := e.sst.StopListening()
 		if err != nil {
 			logger.New().WithError(err).Error("failed to stop listening")
 		}
 	}()
 
+	count := 0
 	// For Google SST, we need to manually process the audio chunk
 	if googleSST, ok := e.sst.(*sst.GoogleSST); ok {
 		go func() {
+			log.Debug("[voice] initial delay for sst collection")
 			time.Sleep(1 * time.Second) // Give some time to collect audio
+
 			for e.sst.IsListening() {
-				googleSST.ProcessAudioChunk(ctx)
+				count++
+				log.Debug(fmt.Sprintf("[voice] sst is listening [chunk:%d]", count))
+				err := googleSST.ProcessAudioChunk(ctx)
+				if err != nil {
+					log.WithError(err).Error(fmt.Sprintf("failed to process audio chunk [chunk:%d]", count))
+				}
 				time.Sleep(100 * time.Millisecond)
 			}
+
+			log.Debug("[voice] sst no longer listening. lets exit")
+			<-ctx.Done()
 		}()
 	}
 
+	var prompt string
 	// Wait for transcript or timeout
 	select {
 	case transcript := <-transcriptChan:
-		e.sst.StopListening()
-		return strings.TrimSpace(transcript), nil
+		if len(prompt) > 0 {
+			prompt += fmt.Sprintf("%s %s", prompt, transcript)
+		} else {
+			prompt = transcript
+		}
+
+		logger.New().Debug(fmt.Sprintf("[engine] transcript received. add to prompt and keep listening [prompt:%s]", prompt))
+		//err := e.sst.StopListening()
+		//if err != nil {
+		//	return "", err
+		//}
+		//return strings.TrimSpace(transcript), nil
 	case <-ctx.Done():
-		e.sst.StopListening()
+		logger.New().Debug("[engine] context ended. stop listening")
+
+		// intentional cancelling
+		if !e.sst.IsListening() {
+			return prompt, nil
+		}
+
+		// we were not done and was asked by context
+		// to wrap things up. should report this
+		err = e.sst.StopListening()
+		if err != nil {
+			return "", err
+		}
+
 		return "", fmt.Errorf("voice input timed out")
 	}
+
+	return prompt, nil
 }
 
 func (e *Engine) findTtsModel(character *Character) string {

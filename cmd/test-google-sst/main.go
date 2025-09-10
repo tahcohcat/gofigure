@@ -38,6 +38,7 @@ func main() {
 	deviceCallbacks := malgo.DeviceCallbacks{
 		Data: func(outputSample, inputSample []byte, frameCount uint32) {
 			if recording {
+				fmt.Println("Recording... [buffer %d] added", frameCount)
 				audioBuffer = append(audioBuffer, inputSample...)
 			}
 		},

@@ -18,6 +18,10 @@ const (
 
 type LogLevel string
 
+var (
+	GlobalLogLevel LogLevel = "INFO"
+)
+
 const (
 	LogLevelDebug LogLevel = "debug"
 	LogLevelInfo  LogLevel = "info"
@@ -32,7 +36,7 @@ type Log struct {
 
 func New() *Log {
 	return &Log{
-		level: LogLevelInfo,
+		level: GlobalLogLevel,
 	}
 }
 

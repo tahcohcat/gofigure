@@ -14,6 +14,7 @@ var (
 	cfgFile  string
 	showResp bool
 	useMic   bool
+	debug    bool
 	cfg      *config.Config
 	log      = logger.New()
 )
@@ -59,10 +60,10 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./config.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&showResp, "show-responses", false, "show responses in output")
-	
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "show debug logging")
+
 	// Add mic flag to play command specifically
 	playCmd.Flags().BoolVar(&useMic, "mic", false, "enable microphone input during interviews (push-to-talk)")
-
 }
 
 func initConfig() {
@@ -77,6 +78,9 @@ func initConfig() {
 func main() {
 	rootCmd.AddCommand(playCmd)
 	rootCmd.AddCommand(configCmd)
+
+	logger.GlobalLogLevel = logger.LogLevelDebug
+	logger.New().Debug("starting game [debug logging enabled]")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.WithError(err).Error("Command execution failed")

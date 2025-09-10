@@ -3,6 +3,7 @@ package sst
 import (
 	"context"
 	"fmt"
+	"gofigure/internal/logger"
 	"log"
 
 	speech "cloud.google.com/go/speech/apiv1"
@@ -50,6 +51,8 @@ func NewGoogleSST(ctx context.Context, languageCode string, sampleRate int) (*Go
 }
 
 func (g *GoogleSST) StartListening(ctx context.Context) (<-chan string, error) {
+
+	logger.New().Debug("[google-sst] start-listening called")
 	if g.recording {
 		return g.transcriptChan, nil
 	}
@@ -64,6 +67,7 @@ func (g *GoogleSST) StartListening(ctx context.Context) (<-chan string, error) {
 		Data: func(outputSample, inputSample []byte, frameCount uint32) {
 			if g.recording {
 				g.audioBuffer = append(g.audioBuffer, inputSample...)
+				//logger.New().Debug(fmt.Sprintf("input sample added [samples:%d, frames:%d]", len(g.audioBuffer), frameCount))
 			}
 		},
 	}
@@ -85,6 +89,7 @@ func (g *GoogleSST) StartListening(ctx context.Context) (<-chan string, error) {
 }
 
 func (g *GoogleSST) StopListening() error {
+	logger.New().Debug("[google-sst] stop-listening called")
 	if !g.recording {
 		return nil
 	}
@@ -144,17 +149,23 @@ func (g *GoogleSST) ProcessAudioChunk(ctx context.Context) error {
 			transcript := result.Alternatives[0].Transcript
 			select {
 			case g.transcriptChan <- transcript:
+				logger.New().WithError(ctx.Err()).Debug("[google-sst] process audio chunk. transcript sent to channel")
 			case <-ctx.Done():
+
+				logger.New().WithError(ctx.Err()).Debug("[google-sst] process audio chunk. context done")
 				return ctx.Err()
 			}
 		}
 	}
 
+	logger.New().Debug("[google-sst] process audio chunk finished")
 	return nil
 }
 
 // Close cleans up resources
 func (g *GoogleSST) Close() error {
+	logger.New().Debug("[google-sst] close called")
+
 	err := g.StopListening()
 	if err != nil {
 		return err
