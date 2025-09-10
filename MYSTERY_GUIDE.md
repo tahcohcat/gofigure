@@ -81,7 +81,16 @@ Examples:
 
 ## 🎭 Voice Acting Tips
 
-When using the `--mic` flag for voice input:
+
+**Streamlined Voice Experience**: With `--mic` flag, interviews automatically use voice mode!
+
+### Quick Start:
+1. **Start interview**: `interview Lady Blackwood`
+2. **Press ENTER**: Begin recording your question
+3. **Speak clearly**: Ask your question naturally
+4. **Press ENTER**: Stop recording and send question
+5. **Listen to response**: Character replies with voice
+6. **Repeat**: Press ENTER for next question - no need to type anything!
 
 ### Effective Questions:
 - **Direct:** *"Where exactly were you at 11:30 PM?"*
@@ -95,7 +104,12 @@ When using the `--mic` flag for voice input:
 - **Helpful characters:** Ask for their opinions and observations
 - **Suspicious characters:** Challenge their statements firmly
 
----
+### Pro Tips:
+- **Speak naturally** - no need to shout or speak robotically
+- **Clear pronunciation** - take your time with names and locations
+- **Natural rhythm** - pause between questions to think
+- **Switch modes**: Type 'text' if you want to type a complex question
+
 
 ## 🧩 Difficulty Comparison
 

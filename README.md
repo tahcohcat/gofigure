@@ -82,23 +82,35 @@ go build -o gofigure ./cmd/gofigure
 - `accuse <name> <weapon> <location>` - Make your final accusation
 - `exit` - Quit the game
 
-### Voice Input During Interviews
 
-When interviewing characters with `--mic` enabled:
+### 🎙️ Streamlined Voice Input
 
-1. **Type normally** for text input, OR
-2. **Type `mic`** to switch to voice mode
-3. **Press ENTER** to start recording
-4. **Speak your question** clearly
-5. **Press ENTER** to stop and transcribe
+When you start an interview with `--mic` enabled:
+
+- **Automatic voice mode** - No need to type "mic" every time!
+- **Press ENTER** to record each question
+- **Seamless flow** - Ask questions naturally with your voice
+- **Switch modes** - Type 'text' to switch to typing, 'voice' to switch back
+
+```
+🎭 You are now interviewing Lady Blackwood
+🎙️ Voice mode enabled - Press ENTER to record questions
+
+🎙️ Press ENTER to ask a question: [Press ENTER]
+
 
 ```
 Q: mic
 🎙️ Press ENTER to start recording...
+
 🔴 Recording... Press ENTER to stop
 You asked: What were you doing at the time of the murder?
 
 🎭 Character: Well, detective, I was in the library reading...
+
+
+🎙️ Press ENTER to ask a question: [Press ENTER again for next question]
+
 ```
 
 ### 🎙️ Immersive Audio Experience

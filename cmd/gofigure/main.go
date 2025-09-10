@@ -59,9 +59,10 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./config.yaml)")
 	rootCmd.PersistentFlags().BoolVar(&showResp, "show-responses", false, "show responses in output")
-
+	
 	// Add mic flag to play command specifically
-	playCmd.Flags().BoolVar(&useMic, "mic", true, "enable microphone input during interviews (push-to-talk)")
+	playCmd.Flags().BoolVar(&useMic, "mic", false, "enable microphone input during interviews (push-to-talk)")
+
 }
 
 func initConfig() {

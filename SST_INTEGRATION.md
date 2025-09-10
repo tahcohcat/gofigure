@@ -41,22 +41,30 @@ Run the game with the `--mic` flag to enable voice input:
 
 ### During Interviews
 
-When interviewing characters:
+**Streamlined Experience**: When `--mic` flag is used, interviews automatically start in voice mode:
 
-1. **Normal text input**: Type your questions as usual
-2. **Voice input**: Type `mic` to switch to voice input mode
-3. **Push-to-talk**: Press ENTER to start recording, ENTER again to stop
-4. **Automatic transcription**: Your speech will be converted to text and sent to the character
+1. **Automatic voice mode**: No need to type "mic" - voice input is default
+2. **Press ENTER**: Start recording your question  
+3. **Press ENTER again**: Stop recording and get transcription
+4. **Seamless flow**: After the character responds, press ENTER for the next question
+5. **Mode switching**: Type 'text' to switch to typing, 'voice' to switch back
 
-### Voice Input Flow
+### Streamlined Voice Input Flow
 
 ```
-Q: mic
-🎙️ Press ENTER to start recording...
-[Press ENTER]
+🎭 You are now interviewing Lady Blackwood
+🎙️ Voice mode enabled - Press ENTER to record questions
+
+🎙️ Press ENTER to ask a question: [Press ENTER]
 🔴 Recording... Press ENTER to stop
-[Press ENTER]
 You asked: What were you doing at the time of the murder?
+
+[Character responds with voice]
+
+🎙️ Press ENTER to ask a question: [Press ENTER for next question]
+🔴 Recording... Press ENTER to stop  
+You asked: Did you see anything suspicious?
+
 ```
 
 ## Narrator Text-to-Speech
