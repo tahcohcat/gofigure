@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gofigure/internal/logger"
+	"time"
 
 	speech "cloud.google.com/go/speech/apiv1"
 	"github.com/gen2brain/malgo"
@@ -115,6 +116,24 @@ func (g *GoogleSST) StopListening() error {
 
 	g.recording = false
 
+	// Process any remaining audio in the buffer before stopping
+	if len(g.audioBuffer) > 0 {
+		logger.New().Debug(fmt.Sprintf("[google-sst] processing final audio buffer: %d bytes", len(g.audioBuffer)))
+
+		// Create a context for the final processing with a reasonable timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		err := g.ProcessAudioChunk(ctx)
+		if err != nil {
+			logger.New().WithError(err).Error("failed to process final audio chunk")
+		} else {
+			logger.New().Debug("[google-sst] final audio chunk processed successfully")
+		}
+	} else {
+		logger.New().Debug("[google-sst] no remaining audio to process")
+	}
+
 	if g.device != nil {
 		g.device.Stop()
 		g.device.Uninit()
@@ -132,6 +151,7 @@ func (g *GoogleSST) Provider() string {
 	return "google"
 }
 
+// Add debugging method to check audio capture stats
 func (g *GoogleSST) GetDebugStats() map[string]interface{} {
 	return map[string]interface{}{
 		"recording":           g.recording,

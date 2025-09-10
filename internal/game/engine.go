@@ -322,7 +322,6 @@ func (e *Engine) getVoiceInput() (string, error) {
 	if googleSST, ok := e.sst.(*sst.GoogleSST); ok {
 		go func() {
 			log.Debug("[voice] initial delay for sst collection")
-			//time.Sleep(2 * time.Second) // Longer initial delay to collect more audio
 			time.Sleep(200 * time.Millisecond) // Longer initial delay to collect more audio
 
 			processingInterval := 2 * time.Second // Process chunks every 2 seconds instead of 100ms
@@ -382,8 +381,28 @@ func (e *Engine) getVoiceInput() (string, error) {
 
 		case <-stopChan:
 			logger.New().Debug("[engine] user requested stop")
-			prompt = strings.ReplaceAll(prompt, ".", " ")
-			return strings.TrimSpace(prompt), nil
+
+			// Give a small delay to allow any final audio processing
+			logger.New().Debug("[engine] waiting for final audio processing...")
+			time.Sleep(500 * time.Millisecond)
+
+			// Process any final transcripts that might have come in
+			finalTranscriptTimeout := time.After(2 * time.Second)
+			for {
+				select {
+				case transcript := <-transcriptChan:
+					if strings.TrimSpace(transcript) != "" {
+						transcripts = append(transcripts, strings.TrimSpace(transcript))
+						prompt = strings.Join(transcripts, " ")
+						prompt = strings.ReplaceAll(prompt, ".", " ")
+						logger.New().Debug(fmt.Sprintf("[engine] final transcript received: '%s', combined: [%s]", transcript, prompt))
+					}
+				case <-finalTranscriptTimeout:
+					logger.New().Debug("[engine] final transcript collection timeout")
+					prompt = strings.ReplaceAll(prompt, ".", " ")
+					return strings.TrimSpace(prompt), nil
+				}
+			}
 
 		case <-ctx.Done():
 			logger.New().Debug("[engine] context timeout")

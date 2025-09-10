@@ -79,6 +79,7 @@ func main() {
 	rootCmd.AddCommand(playCmd)
 	rootCmd.AddCommand(configCmd)
 
+	logger.GlobalLogLevel = logger.LogLevelInfo
 	if debug {
 		logger.GlobalLogLevel = logger.LogLevelDebug
 		logger.New().Debug("starting game [debug logging enabled]")
