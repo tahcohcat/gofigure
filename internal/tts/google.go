@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"gofigure/internal/game/audio"
+	"gofigure/internal/logger"
 	"strings"
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
@@ -26,7 +27,7 @@ func NewGoogleTTS(ctx context.Context) (*GoogleTTS, error) {
 	return &GoogleTTS{client: client}, nil
 }
 
-func (g *GoogleTTS) Speak(ctx context.Context, text, model string) error {
+func (g *GoogleTTS) Speak(ctx context.Context, text, emotions, model string) error {
 
 	if model == "" {
 		model = "en-GB-Chirp3-HD-Charon"
@@ -34,14 +35,16 @@ func (g *GoogleTTS) Speak(ctx context.Context, text, model string) error {
 
 	languageCode := getLanguageCode(model)
 
+	logger.New().Debug(fmt.Sprintf("[tts] [model:%s, prompt:%s]", model, emotions))
+
 	req := &tts.SynthesizeSpeechRequest{
 		Input: &tts.SynthesisInput{
 			InputSource: &tts.SynthesisInput_Text{
 				Text: text,
 			},
 
-			// todo: we need to utilise this for persona and mood
-			//Prompt: &text,
+			//todo: doesn't seem well support yet..wait a bit?
+			//Prompt: &emotions,
 		},
 		Voice: &tts.VoiceSelectionParams{
 			LanguageCode: languageCode,

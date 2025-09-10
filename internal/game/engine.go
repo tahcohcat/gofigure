@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"gofigure/config"
 	"gofigure/internal/game/audio"
+	llmpkg "gofigure/internal/llm"
 	"gofigure/internal/logger"
-	"gofigure/internal/ollama"
 	"gofigure/internal/sst"
 	"gofigure/internal/tts"
 	"os"
@@ -20,11 +20,11 @@ import (
 type Engine struct {
 	murder Murder
 
-	tts          tts.Tts
-	sst          sst.Sst
-	ollamaClient *ollama.Client
-	logger       *logger.Log
-	config       *config.Config
+	tts    tts.Tts
+	sst    sst.Sst
+	llm    llmpkg.LLM
+	logger *logger.Log
+	config *config.Config
 
 	showResponses bool
 	useMicInput   bool
@@ -34,9 +34,12 @@ type Engine struct {
 }
 
 func NewEngine(cfg *config.Config) (*Engine, error) {
-	ollamaClient, err := ollama.NewClient(&cfg.Ollama)
+
+	logger.New().Info(fmt.Sprintf("config.openai.apikey:%s", cfg.OpenAI.APIKey))
+
+	llmClient, err := llmpkg.NewLLMClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create ollama client: %w", err)
+		return nil, fmt.Errorf("failed to create LLM client: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -75,7 +78,7 @@ func NewEngine(cfg *config.Config) (*Engine, error) {
 	return &Engine{
 		tts:           t,
 		sst:           s,
-		ollamaClient:  ollamaClient,
+		llm:           llmClient,
 		logger:        logger.New(),
 		config:        cfg,
 		showResponses: false,
@@ -108,12 +111,12 @@ func (e *Engine) Start() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := e.ollamaClient.IsModelAvailable(ctx); err != nil {
-		e.logger.WithError(err).Error("ollama model check failed")
-		return fmt.Errorf("ollama setup error: %w", err)
+	if err := e.llm.IsModelAvailable(ctx); err != nil {
+		e.logger.WithError(err).Error("llm model check failed")
+		return fmt.Errorf("llm setup error: %w", err)
 	}
 
-	e.logger.Debug("ollama connection verified")
+	e.logger.Debug("llm connection verified")
 
 	welcomeMessage := fmt.Sprintf("Welcome Detective! You are investigating: %s", e.murder.Title)
 	e.logger.Info(fmt.Sprintf("🔍 %s", welcomeMessage))
@@ -270,10 +273,15 @@ func (e *Engine) startInterview(char *Character) {
 func (e *Engine) processQuestion(char *Character, question string) {
 	e.logger.Debug("🤔 Thinking...")
 
-	ctx, cancel := context.WithTimeout(context.Background(),
-		time.Duration(e.config.Ollama.Timeout)*time.Second)
+	// Use different timeout based on LLM provider
+	timeout := time.Duration(e.config.Ollama.Timeout) * time.Second
+	if e.config.LLM.Provider == "openai" {
+		timeout = time.Duration(e.config.OpenAI.Timeout) * time.Second
+	}
 
-	answer, err := char.AskQuestion(ctx, question, e.murder, e.ollamaClient)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	answer, err := char.AskQuestion(ctx, question, e.murder, e.llm)
 	cancel()
 
 	if err != nil {
@@ -285,12 +293,12 @@ func (e *Engine) processQuestion(char *Character, question string) {
 	ctx, _ = context.WithTimeout(context.Background(),
 		time.Duration(e.config.Ollama.Timeout)*time.Second)
 
-	if err = e.tts.Speak(ctx, answer, e.findTtsModel(char)); err != nil {
+	if err = e.tts.Speak(ctx, answer.Response, answer.Emotion, e.findTtsModel(char)); err != nil {
 		logger.New().WithError(err).Error("character has lost their voice")
 	}
 
 	if !e.useMicInput || e.showResponses {
-		e.logger.Character(char.Name, fmt.Sprintf("👨‍✈️.....\r%s: %s\n", char.Name, answer))
+		e.logger.Character(char.Name, fmt.Sprintf("\r%s: [emotion:%s] %s\n", char.Name, answer.Emotion, answer.Response))
 	}
 }
 
@@ -466,7 +474,8 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 
 	// Speak welcome message
 	go func() {
-		if err := e.tts.Speak(ctx, welcomeMessage, narratorModel); err != nil {
+		emotion := "Welcoming and friendly"
+		if err := e.tts.Speak(ctx, welcomeMessage, emotion, narratorModel); err != nil {
 			if !errors.Is(err, context.Canceled) {
 				e.logger.WithError(err).Error("failed to speak welcome message")
 			}
@@ -494,7 +503,8 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 
 	// Speak the introduction
 	go func() {
-		if err := e.tts.Speak(ctx, e.murder.Intro, narratorModel); err != nil {
+		emotion := "Authorative, calm with a tone of mischief"
+		if err := e.tts.Speak(ctx, e.murder.Intro, emotion, narratorModel); err != nil {
 			e.logger.WithError(err).Error("failed to speak introduction")
 		}
 		ttsDone <- true

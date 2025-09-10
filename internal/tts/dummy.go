@@ -12,7 +12,7 @@ func NewDummyTts() *DummyTts {
 	return &DummyTts{}
 }
 
-func (d *DummyTts) Speak(_ context.Context, _, _ string) error {
+func (d *DummyTts) Speak(_ context.Context, _, _, _ string) error {
 	logger.New().Debug("no tts configured. ignoring")
 	return nil
 }

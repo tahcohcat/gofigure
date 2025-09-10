@@ -3,6 +3,6 @@ package tts
 import "context"
 
 type Tts interface {
-	Speak(ctx context.Context, text, model string) error
+	Speak(ctx context.Context, text, emotions, model string) error
 	Name() string
 }
