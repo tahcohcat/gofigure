@@ -62,6 +62,7 @@ func init() {
 	
 	// Add mic flag to play command specifically
 	playCmd.Flags().BoolVar(&useMic, "mic", false, "enable microphone input during interviews (push-to-talk)")
+
 }
 
 func initConfig() {

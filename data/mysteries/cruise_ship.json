@@ -4,7 +4,7 @@
   "narrator_tts": [
     {
       "engine": "google",
-      "model": "en-US-Chirp3-HD-Atlas"
+      "model": "en-GB-Chirp3-HD-Charon"
     }
   ],
   "victim": "Marcus Beaumont (Celebrity Chef)",

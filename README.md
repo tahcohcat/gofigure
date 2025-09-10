@@ -82,6 +82,7 @@ go build -o gofigure ./cmd/gofigure
 - `accuse <name> <weapon> <location>` - Make your final accusation
 - `exit` - Quit the game
 
+
 ### 🎙️ Streamlined Voice Input
 
 When you start an interview with `--mic` enabled:
@@ -96,12 +97,20 @@ When you start an interview with `--mic` enabled:
 🎙️ Voice mode enabled - Press ENTER to record questions
 
 🎙️ Press ENTER to ask a question: [Press ENTER]
+
+
+```
+Q: mic
+🎙️ Press ENTER to start recording...
+
 🔴 Recording... Press ENTER to stop
 You asked: What were you doing at the time of the murder?
 
 🎭 Character: Well, detective, I was in the library reading...
 
+
 🎙️ Press ENTER to ask a question: [Press ENTER again for next question]
+
 ```
 
 ### 🎙️ Immersive Audio Experience

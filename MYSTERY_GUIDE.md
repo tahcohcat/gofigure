@@ -81,6 +81,7 @@ Examples:
 
 ## 🎭 Voice Acting Tips
 
+
 **Streamlined Voice Experience**: With `--mic` flag, interviews automatically use voice mode!
 
 ### Quick Start:
@@ -109,7 +110,6 @@ Examples:
 - **Natural rhythm** - pause between questions to think
 - **Switch modes**: Type 'text' if you want to type a complex question
 
----
 
 ## 🧩 Difficulty Comparison
 

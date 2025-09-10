@@ -71,7 +71,8 @@ func NewEngine(cfg *config.Config) (*Engine, error) {
 		logger:        logger.New(),
 		config:        cfg,
 		showResponses: false,
-		useMicInput:   false,
+		useMicInput:   true,
+
 	}, nil
 }
 
@@ -106,10 +107,14 @@ func (e *Engine) Start() error {
 	}
 
 	e.logger.Debug("ollama connection verified")
-	
+
 	welcomeMessage := fmt.Sprintf("🔍 Welcome Detective! You are investigating: %s", e.murder.Title)
 	e.logger.Info(welcomeMessage)
-	
+
+	welcomeMessage := fmt.Sprintf("🔍 Welcome Detective! You are investigating: %s", e.murder.Title)
+	e.logger.Info(welcomeMessage)
+
+
 	// Read the introduction aloud if TTS is enabled and narrator TTS model is configured
 	if e.config.Tts.Enabled && len(e.murder.NarratorTTS) > 0 {
 		narratorModel := e.findNarratorTtsModel()
@@ -117,7 +122,7 @@ func (e *Engine) Start() error {
 			e.speakInterruptibleIntroduction(welcomeMessage, narratorModel)
 		}
 	}
-	
+
 	e.logger.Info(e.murder.Intro)
 	e.logger.Info("Type 'help' for available commands.")
 
@@ -192,6 +197,7 @@ func (e *Engine) showHelp() {
 		fmt.Println("  • Press ENTER to record questions")
 		fmt.Println("  • Type 'text' during interviews to switch to typing")
 		fmt.Println("  • Type 'voice' during text mode to switch back")
+
 	}
 }
 
@@ -223,17 +229,17 @@ func (e *Engine) interviewCharacter(charName string, scanner *bufio.Scanner) {
 }
 
 func (e *Engine) interviewWithVoice(char *Character, scanner *bufio.Scanner) {
-	for {
-		fmt.Print("\n🎙️ Press ENTER to ask a question (or type command): ")
-		if !scanner.Scan() {
-			break
-		}
-		input := strings.TrimSpace(scanner.Text())
-		
+
+	if e.useMicInput {
+		fmt.Println("💡 Tip: Type 'mic' to use voice input (push-to-talk), or continue typing normally")
+	}
+
+
 		if input == "exit" {
 			fmt.Println("Interview ended.\n")
 			break
 		}
+
 		
 		if input == "text" {
 			fmt.Println("Switched to text mode. Type your questions:")
@@ -255,12 +261,14 @@ func (e *Engine) interviewWithVoice(char *Character, scanner *bufio.Scanner) {
 		}
 		if question == "" {
 			fmt.Println("No speech detected, please try again.")
+
 			continue
 		}
 		fmt.Printf("You asked: %s\n", question)
 		e.processQuestion(char, question)
 	}
 }
+
 
 func (e *Engine) interviewWithText(char *Character, scanner *bufio.Scanner) {
 	for {
@@ -355,6 +363,46 @@ func (e *Engine) getVoiceInput() (string, error) {
 	}
 }
 
+func (e *Engine) getVoiceInput() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	fmt.Println("🎙️ Press ENTER to start recording...")
+	fmt.Scanln()
+
+	transcriptChan, err := e.sst.StartListening(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to start listening: %w", err)
+	}
+
+	fmt.Println("🔴 Recording... Press ENTER to stop")
+	go func() {
+		fmt.Scanln()
+		e.sst.StopListening()
+	}()
+
+	// For Google SST, we need to manually process the audio chunk
+	if googleSST, ok := e.sst.(*sst.GoogleSST); ok {
+		go func() {
+			time.Sleep(1 * time.Second) // Give some time to collect audio
+			for e.sst.IsListening() {
+				googleSST.ProcessAudioChunk(ctx)
+				time.Sleep(100 * time.Millisecond)
+			}
+		}()
+	}
+
+	// Wait for transcript or timeout
+	select {
+	case transcript := <-transcriptChan:
+		e.sst.StopListening()
+		return strings.TrimSpace(transcript), nil
+	case <-ctx.Done():
+		e.sst.StopListening()
+		return "", fmt.Errorf("voice input timed out")
+	}
+}
+
 func (e *Engine) findTtsModel(character *Character) string {
 	for _, ttsOption := range character.TTS {
 		if ttsOption.Engine == e.tts.Name() {
@@ -374,6 +422,7 @@ func (e *Engine) findNarratorTtsModel() string {
 
 	return ""
 }
+
 
 func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel string) {
 	fmt.Println("🎬 Press ENTER to skip narration, or wait to listen...")
@@ -438,6 +487,7 @@ func (e *Engine) speakInterruptibleIntroduction(welcomeMessage, narratorModel st
 		fmt.Println("🎬 Narration complete. The investigation begins!")
 	}
 }
+
 
 func (e *Engine) findCharacter(name string) *Character {
 	for i := range e.murder.Characters {
